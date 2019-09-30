@@ -10,10 +10,10 @@ from model.unet import UNet
 
 
 class Renderer(nn.Module):
-    def __init__(self, W, H, input_channels, output_channels):
+    def __init__(self, W, H):
         super(Renderer, self).__init__()
         self.texture = Texture(W, H)
-        self.unet = UNet(input_channels, output_channels)
+        self.unet = UNet(3, 3)
 
     def forward(self, x):
         x = self.texture(x)
