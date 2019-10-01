@@ -22,29 +22,28 @@ def map_transform(map):
 def augment(img, map, crop_size):
     '''
     :param img:  PIL input image
-    :param map: PIL input map
-    :param crop_size: a tuple (w, h)
-    :return: image and map
+    :param map: numpy input map
+    :param crop_size: a tuple (h, w)
+    :return: image, map and mask
     '''
     # random mirror
-    if random.random() < 0.5:
-        img = img.transpose(Image.FLIP_LEFT_RIGHT)
-        map = map.transpose(Image.FLIP_LEFT_RIGHT)
+    # if random.random() < 0.5:
+    #     img = img.transpose(Image.FLIP_LEFT_RIGHT)
+    #     map = np.fliplr(map)
 
     # random crop
     w, h = img.size
-    crop_w, crop_h = crop_size
-    x1 = random.randint(0, w - crop_w)
-    y1 = random.randint(0, h - crop_h)
-    img = img.crop((x1, y1, x1 + crop_w, y1 + crop_h))
-    map = map.crop((x1, y1, x1 + crop_w, y1 + crop_h))
+    crop_h, crop_w = crop_size
+    w1 = random.randint(0, w - crop_w)
+    h1 = random.randint(0, h - crop_h)
+    img = img.crop((w1, h1, w1 + crop_w, h1 + crop_h))
+    map = map[h1:h1 + crop_h, w1:w1 + crop_w, :]
 
     # final transform
     img, map = img_transform(img), map_transform(map)
 
     # mask for valid uv positions
-    mask = map.ge(-1.0+1e-6)
+    mask = torch.max(map, dim=2)[0].ge(-1.0+1e-6)
+    mask = mask.repeat((3,1,1))
 
     return img, map, mask
-
-

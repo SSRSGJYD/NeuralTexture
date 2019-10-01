@@ -36,16 +36,14 @@ class up(nn.Module):
             )
 
     def forward(self, x1, x2):
-        x1 = self.conv(x1)
         if self.concat:
             diffY = x2.size()[2] - x1.size()[2]
             diffX = x2.size()[3] - x1.size()[3]
             x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
                             diffY // 2, diffY - diffY // 2])
-            x = torch.cat((x2, x1), dim=1)
-            return x
-        else:
-            return x1
+            x1 = torch.cat((x2, x1), dim=1)
+        x1 = self.conv(x1)
+        return x1
 
 
 class UNet(nn.Module):
@@ -57,10 +55,10 @@ class UNet(nn.Module):
         self.down4 = down(256, 512)
         self.down5 = down(512, 512)
         self.up1 = up(512, 512, output_pad=1, concat=False)
-        self.up2 = up(512, 512)
-        self.up3 = up(512, 256)
-        self.up4 = up(256, 128)
-        self.up5 = up(128, output_channels, final=True)
+        self.up2 = up(1024, 512)
+        self.up3 = up(768, 256)
+        self.up4 = up(384, 128)
+        self.up5 = up(192, output_channels, final=True)
 
     def forward(self, x):
         x1 = self.down1(x)
