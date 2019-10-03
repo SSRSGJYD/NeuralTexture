@@ -23,8 +23,8 @@ class UVDataset(Dataset):
     def __getitem__(self, idx):
         img = Image.open(os.path.join(self.dir, self.idx_list[idx]+'.ppm'), 'r')
         uv_map = np.load(os.path.join(self.dir, 'uv_'+self.idx_list[idx]+'.npy'))
-        if np.any(np.isnan(uv_map)):
-            print('uv_map is nan')
+        # if np.any(np.isnan(uv_map)):
+        #    print('uv_map is nan', self.idx_list[idx])
         img, uv_map, mask = augment(img, uv_map, self.crop_size)
         return img, uv_map, mask
 
