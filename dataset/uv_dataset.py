@@ -27,6 +27,8 @@ class UVDataset(Dataset):
         uv_map[nan_pos] = 0
         if np.any(np.isnan(uv_map)):
             print('nan in dataset')
+        if np.any(np.isinf(uv_map)):
+            print('inf in dataset')
         img, uv_map, mask = augment(img, uv_map, self.crop_size)
         return img, uv_map, mask
 

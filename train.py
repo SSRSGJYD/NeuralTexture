@@ -28,6 +28,8 @@ parser.add_argument('--lr', default=config.LEARNING_RATE)
 parser.add_argument('--betas', default=config.BETAS)
 parser.add_argument('--l2', default=config.L2_WEIGHT_DECAY)
 parser.add_argument('--eps', default=config.EPS)
+parser.add_argument('--load', default=config.LOAD)
+parser.add_argument('--load_step', type=int, default=config.LOAD_STEP)
 args = parser.parse_args()
 
 
@@ -56,10 +58,14 @@ if __name__ == '__main__':
         {'params': model.unet.parameters()}],
         lr=args.lr, betas=args.betas, eps=args.eps)
     model = model.to('cuda')
+    step = 0
+    if args.load:
+        print('Loading Saved Model')
+        model.load(os.path.join(args.checkpoint, args.load))
+        step = args.load_step
     model.train()
     torch.set_grad_enabled(True)
     criterion = nn.L1Loss()
-    step = 0
 
     print('Training started')
     for i in range(args.epoch):
@@ -79,4 +85,4 @@ if __name__ == '__main__':
 
         # save checkpoint
         print('Saving checkpoint')
-        torch.save(model.state_dict(), args.checkpoint+time_string+'/epoch_{}.pt'.format(i+1))
+        torch.save(model, args.checkpoint+time_string+'/epoch_{}.pt'.format(i+1))
