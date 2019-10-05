@@ -10,7 +10,7 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader
 
 import config
-from dataset.uv_dataset import UVDataset, collect_fn
+from dataset.uv_dataset import UVDataset
 from model.renderer import Renderer
 
 parser = argparse.ArgumentParser()
