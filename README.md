@@ -29,6 +29,7 @@ dataset/ --- custom PyTorch Dataset classes for loading included data
 model/ --- custom PyTorch Module classes
 program/ --- small auxiliary programs
 util.py --- useful procedures
+render.py --- main render script
 train.py --- main training script
 ```
 
@@ -36,9 +37,15 @@ train.py --- main training script
 
 ## How to Use
 
-To train the model, put uv-map `.npy` files and video frames `.ppm` files into one folder, set `DATA_DIR` in `config.py` , and run the command:
+To train the model, put uv-map `.npy` files and video frames `.ppm` files into one folder, set parameters in `config.py` , and run the command:
 
 ```powershell
 python train.py [--args]
+```
+
+To render images using trained model, put uv-map `.npy` files into one folder, set parameters in `config.py` , and run the command:
+
+```powershell
+python render.py [--args]
 ```
 
