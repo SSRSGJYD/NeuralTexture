@@ -56,11 +56,6 @@ if __name__ == '__main__':
         {'params': model.unet.parameters()}],
         lr=args.lr, betas=args.betas, eps=args.eps)
     model = model.to('cuda')
-    model.texture.layer1 = model.texture.layer1.cuda()
-    model.texture.layer2 = model.texture.layer2.cuda()
-    model.texture.layer3 = model.texture.layer3.cuda()
-    model.texture.layer4 = model.texture.layer4.cuda()
-    # model = nn.DataParallel(model.cuda())
     model.train()
     torch.set_grad_enabled(True)
     criterion = nn.L1Loss()
