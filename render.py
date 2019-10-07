@@ -35,13 +35,8 @@ if __name__ == '__main__':
     dataset = EvalDataset(args.data, args.test)
     dataloader = DataLoader(dataset, batch_size=args.batch, shuffle=False, num_workers=4, collate_fn=EvalDataset.collect_fn)
 
-    model = Renderer(args.pyramidw, args.pyramidh)
+    model = torch.load(checkpoint_file)
     model = model.to('cuda')
-    model.texture.layer1 = model.texture.layer1.cuda()
-    model.texture.layer2 = model.texture.layer2.cuda()
-    model.texture.layer3 = model.texture.layer3.cuda()
-    model.texture.layer4 = model.texture.layer4.cuda()
-    model.load(checkpoint_file)
     model.eval()
     torch.set_grad_enabled(False)
 

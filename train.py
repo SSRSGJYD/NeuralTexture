@@ -49,7 +49,14 @@ if __name__ == '__main__':
     dataset = UVDataset(args.data, args.train, args.croph, args.cropw)
     dataloader = DataLoader(dataset, batch_size=args.batch, shuffle=True, num_workers=4)
 
-    model = Renderer(args.pyramidw, args.pyramidh)
+    if args.load:
+        print('Loading Saved Model')
+        model = torch.load(os.path.join(args.checkpoint, args.load))
+        step = args.load_step
+    else:
+        model = Renderer(args.pyramidw, args.pyramidh)
+        step = 0
+
     optimizer = Adam([
         {'params': model.texture.layer1, 'weight_decay': args.l2[0]},
         {'params': model.texture.layer2, 'weight_decay': args.l2[1]},
@@ -58,11 +65,6 @@ if __name__ == '__main__':
         {'params': model.unet.parameters()}],
         lr=args.lr, betas=args.betas, eps=args.eps)
     model = model.to('cuda')
-    step = 0
-    if args.load:
-        print('Loading Saved Model')
-        model.load(os.path.join(args.checkpoint, args.load))
-        step = args.load_step
     model.train()
     torch.set_grad_enabled(True)
     criterion = nn.L1Loss()
@@ -73,11 +75,11 @@ if __name__ == '__main__':
         for samples in dataloader:
             images, uv_maps, masks = samples
             step += images.shape[0]
+            optimizer.zero_grad()
             preds = model(uv_maps.cuda()).cpu()
             preds = torch.masked_select(preds, masks)
             images = torch.masked_select(images, masks)
             loss = criterion(preds, images)
-            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             writer.add_scalar('train/loss', loss.item(), step)
