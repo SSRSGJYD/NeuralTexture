@@ -1,0 +1,6 @@
+torchvision==0.2.2.post3
+numpy==1.15.0
+torch==1.0.1
+nni==1.0
+Pillow==6.2.0
+tensorboardX==1.9

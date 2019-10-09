@@ -13,7 +13,7 @@ class Renderer(nn.Module):
     def __init__(self, W, H):
         super(Renderer, self).__init__()
         self.texture = Texture(W, H)
-        self.unet = UNet(1, 3)
+        self.unet = UNet(3, 3)
 
     def forward(self, x):
         x = self.texture(x)

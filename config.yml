@@ -1,0 +1,21 @@
+authorName: default
+experimentName: neural_texture
+trialConcurrency: 2
+maxExecDuration: 24h
+maxTrialNum: 6
+#choice: local, remote, pai
+trainingServicePlatform: local
+searchSpacePath: search_space.json
+#choice: true, false
+useAnnotation: false
+tuner:
+  #choice: TPE, Random, Anneal, Evolution, BatchTuner
+  #SMAC (SMAC should be installed through nnictl)
+  builtinTunerName: TPE
+  classArgs:
+    #choice: maximize, minimize
+    optimize_mode: maximize
+trial:
+  command: python nni_train.py
+  codeDir: .
+  gpuNum: 1
