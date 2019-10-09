@@ -42,9 +42,9 @@ if __name__ == '__main__':
         os.makedirs(log_dir)
     writer = tensorboardX.SummaryWriter(logdir=log_dir)
 
-    checkpoint_dir = args.checkpoint + time_string
-    if not os.path.exists(checkpoint_dir):
-        os.makedirs(checkpoint_dir)
+    # checkpoint_dir = args.checkpoint + time_string
+    # if not os.path.exists(checkpoint_dir):
+    #     os.makedirs(checkpoint_dir)
 
     dataset = UVDataset(args.data, args.train, args.croph, args.cropw)
     dataloader = DataLoader(dataset, batch_size=args.batch, shuffle=True, num_workers=4)
@@ -54,22 +54,14 @@ if __name__ == '__main__':
         model = torch.load(os.path.join(args.checkpoint, args.load))
         step = args.load_step
     else:
-        model = Renderer(args.pyramidw, args.pyramidh)
+        model = Renderer(args.pyramidw, args.pyramidh, 8)
         step = 0
 
     optimizer = Adam([
-        {'params': model.texture.pyramid1.layer1, 'weight_decay': args.l2[0]},
-        {'params': model.texture.pyramid2.layer1, 'weight_decay': args.l2[0]},
-        {'params': model.texture.pyramid3.layer1, 'weight_decay': args.l2[0]},
-        {'params': model.texture.pyramid1.layer2, 'weight_decay': args.l2[1]},
-        {'params': model.texture.pyramid2.layer2, 'weight_decay': args.l2[1]},
-        {'params': model.texture.pyramid3.layer2, 'weight_decay': args.l2[1]},
-        {'params': model.texture.pyramid1.layer3, 'weight_decay': args.l2[2]},
-        {'params': model.texture.pyramid2.layer3, 'weight_decay': args.l2[2]},
-        {'params': model.texture.pyramid3.layer3, 'weight_decay': args.l2[2]},
-        {'params': model.texture.pyramid1.layer4, 'weight_decay': args.l2[3]},
-        {'params': model.texture.pyramid2.layer4, 'weight_decay': args.l2[3]},
-        {'params': model.texture.pyramid3.layer4, 'weight_decay': args.l2[3]},
+        {'params': model.texture.layer1, 'weight_decay': args.l2[0]},
+        {'params': model.texture.layer2, 'weight_decay': args.l2[1]},
+        {'params': model.texture.layer3, 'weight_decay': args.l2[2]},
+        {'params': model.texture.layer4, 'weight_decay': args.l2[3]},
         {'params': model.unet.parameters()}],
         lr=args.lr, betas=args.betas, eps=args.eps)
     model = model.to('cuda')
@@ -94,5 +86,5 @@ if __name__ == '__main__':
             print('loss at step {}: {}'.format(step, loss.item()))
 
         # save checkpoint
-        print('Saving checkpoint')
-        torch.save(model, args.checkpoint+time_string+'/epoch_{}.pt'.format(i+1))
+        # print('Saving checkpoint')
+        # torch.save(model, args.checkpoint+time_string+'/epoch_{}.pt'.format(i+1))

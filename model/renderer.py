@@ -10,10 +10,11 @@ from model.unet import UNet
 
 
 class Renderer(nn.Module):
-    def __init__(self, W, H):
+    def __init__(self, W, H, pyramid_num):
         super(Renderer, self).__init__()
-        self.texture = Texture(W, H)
-        self.unet = UNet(3, 3)
+        self.pyramid_num = pyramid_num
+        self.texture = Texture(W, H, pyramid_num)
+        self.unet = UNet(pyramid_num, 3)
 
     def forward(self, x):
         x = self.texture(x)
