@@ -1,6 +1,8 @@
 # =============== Basic Configurations ===========
 PYRAMID_W = 512
 PYRAMID_H = 512
+PYRAMID_NUM = 8
+VIEW_DIRECTION = False
 
 
 # =============== Train Configurations ===========
@@ -16,10 +18,13 @@ LEARNING_RATE = 1e-3
 BETAS = (0.9, 0.999)
 L2_WEIGHT_DECAY = [0.01, 0.001, 0.0001, 0]
 EPS = 1e-8
+LOAD = None
+LOAD_STEP = 0
+EPOCH_PER_CHECKPOINT = 50
 
 
 # =============== Test Configurations ============
-LOAD = ''
+TEST_LOAD = ''
 TEST_DATA_DIR = ''
 TEST_SET = ['{:04d}'.format(i) for i in range(10)]
 SAVE_DIR = ''

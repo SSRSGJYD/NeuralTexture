@@ -14,9 +14,9 @@ class Renderer(nn.Module):
         self.view_direction = view_direction
         self.texture = Texture(W, H, pyramid_num)
         if self.view_direction:
-            self.unet = UNet(pyramid_num, 3)
-        else:
             self.unet = UNet(pyramid_num+9, 3)
+        else:
+            self.unet = UNet(pyramid_num, 3)
 
     def forward(self, uv_map, sh_map=None):
         x = self.texture(uv_map)

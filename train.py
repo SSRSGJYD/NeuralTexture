@@ -16,6 +16,8 @@ from model.renderer import Renderer
 parser = argparse.ArgumentParser()
 parser.add_argument('--pyramidw', type=int, default=config.PYRAMID_W)
 parser.add_argument('--pyramidh', type=int, default=config.PYRAMID_H)
+parser.add_argument('--pyramid_num', type=int, default=config.PYRAMID_NUM)
+parser.add_argument('--view_direction', type=bool, default=config.VIEW_DIRECTION)
 parser.add_argument('--data', type=str, default=config.DATA_DIR, help='directory to data')
 parser.add_argument('--checkpoint', type=str, default=config.CHECKPOINT_DIR, help='directory to save checkpoint')
 parser.add_argument('--logdir', type=str, default=config.LOG_DIR, help='directory to save checkpoint')
@@ -30,6 +32,7 @@ parser.add_argument('--l2', default=config.L2_WEIGHT_DECAY)
 parser.add_argument('--eps', default=config.EPS)
 parser.add_argument('--load', default=config.LOAD)
 parser.add_argument('--load_step', type=int, default=config.LOAD_STEP)
+parser.add_argument('--epoch_per_checkpoint', type=int, default=config.EPOCH_PER_CHECKPOINT)
 args = parser.parse_args()
 
 
@@ -42,11 +45,11 @@ if __name__ == '__main__':
         os.makedirs(log_dir)
     writer = tensorboardX.SummaryWriter(logdir=log_dir)
 
-    # checkpoint_dir = args.checkpoint + time_string
-    # if not os.path.exists(checkpoint_dir):
-    #     os.makedirs(checkpoint_dir)
+    checkpoint_dir = args.checkpoint + time_string
+    if not os.path.exists(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
 
-    dataset = UVDataset(args.data, args.train, args.croph, args.cropw)
+    dataset = UVDataset(args.data, args.train, args.croph, args.cropw, args.view_direction)
     dataloader = DataLoader(dataset, batch_size=args.batch, shuffle=True, num_workers=4)
 
     if args.load:
@@ -54,7 +57,7 @@ if __name__ == '__main__':
         model = torch.load(os.path.join(args.checkpoint, args.load))
         step = args.load_step
     else:
-        model = Renderer(args.pyramidw, args.pyramidh, 8)
+        model = Renderer(args.pyramidw, args.pyramidh, args.pyramid_num, args.view_direction)
         step = 0
 
     optimizer = Adam([
@@ -73,10 +76,17 @@ if __name__ == '__main__':
     for i in range(args.epoch):
         print('Epoch {}'.format(i+1))
         for samples in dataloader:
-            images, uv_maps, masks = samples
-            step += images.shape[0]
-            optimizer.zero_grad()
-            preds = model(uv_maps.cuda()).cpu()
+            if args.view_direction:
+                images, uv_maps, sh_maps, masks = samples
+                step += images.shape[0]
+                optimizer.zero_grad()
+                preds = model(uv_maps.cuda(), sh_maps.cuda()).cpu()
+            else:
+                images, uv_maps, masks = samples
+                step += images.shape[0]
+                optimizer.zero_grad()
+                preds = model(uv_maps.cuda()).cpu()
+
             preds = torch.masked_select(preds, masks)
             images = torch.masked_select(images, masks)
             loss = criterion(preds, images)
@@ -86,5 +96,6 @@ if __name__ == '__main__':
             print('loss at step {}: {}'.format(step, loss.item()))
 
         # save checkpoint
-        # print('Saving checkpoint')
-        # torch.save(model, args.checkpoint+time_string+'/epoch_{}.pt'.format(i+1))
+        if (i+1) % args.epoch_per_checkpoint == 0:
+            print('Saving checkpoint')
+            torch.save(model, args.checkpoint+time_string+'/epoch_{}.pt'.format(i+1))
