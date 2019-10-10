@@ -1,21 +1,18 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils.data import Dataset
-
 import numpy as np
 import os
 from PIL import Image
+from torch.utils.data import Dataset
 
-from util import augment
+from util import augment, augment_view
 
 
 class UVDataset(Dataset):
 
-    def __init__(self, dir, idx_list, H, W):
+    def __init__(self, dir, idx_list, H, W, view_direction=False):
         self.idx_list = idx_list
         self.dir = dir
         self.crop_size = (H, W)
+        self.view_direction = view_direction
 
     def __len__(self):
         return len(self.idx_list)
@@ -29,12 +26,10 @@ class UVDataset(Dataset):
             print('nan in dataset')
         if np.any(np.isinf(uv_map)):
             print('inf in dataset')
-        img, uv_map, mask = augment(img, uv_map, self.crop_size)
-        return img, uv_map, mask
-
-    def collect_fn(data):
-        images, uv_maps, masks = zip(*data)
-        images = torch.cat(images, dim=0)
-        uv_maps = torch.cat(uv_maps, dim=0)
-        masks = torch.cat(masks, dim=0)
-        return images, uv_maps, masks
+        if self.view_direction:
+            view_map = np.load(os.path.join(self.dir, 'view_'+self.idx_list[idx]+'.npy'))
+            img, uv_map, mask, sh_map = augment_view(img, uv_map, view_map, self.crop_size)
+            return img, uv_map, view_map, mask
+        else:
+            img, uv_map, mask = augment(img, uv_map, self.crop_size)
+            return img, uv_map, mask
