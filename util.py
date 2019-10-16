@@ -67,7 +67,7 @@ def view2sh(view_map, h, crop_h, w, crop_w):
     :return: image, map and mask
     '''
     map = view_map[h:h+crop_h, w:w+crop_w, :]
-    sh_map = np.zeros((9, crop_h, crop_w), dtype=np.float)
+    sh_map = np.zeros((9, crop_h, crop_w), dtype=np.float32)
     sh_map[0] = sh[0]
     sh_map[1] = sh[1] * map[:, :, 2]
     sh_map[2] = sh[2] * map[:, :, 1]
