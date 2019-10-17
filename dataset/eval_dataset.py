@@ -12,6 +12,8 @@ class EvalDataset(Dataset):
         self.idx_list = idx_list
         self.dir = dir
         self.view_direction = view_direction
+        uv_map = np.load(os.path.join(self.dir, 'uv/'+self.idx_list[0]+'.npy'))
+        self.height, self.width, _ = uv_map.shape
 
     def __len__(self):
         return len(self.idx_list)

@@ -96,8 +96,8 @@ def augment_view(img, map, view_map, crop_size):
     # random crop
     w, h = img.size
     crop_h, crop_w = crop_size
-    w1 = random.randint(0, w - crop_w)
-    h1 = random.randint(0, h - crop_h)
+    w1 = random.randint(0, w - crop_w-1)
+    h1 = random.randint(0, h - crop_h-1)
     img = img.crop((w1, h1, w1 + crop_w, h1 + crop_h))
     map = map[h1:h1 + crop_h, w1:w1 + crop_w, :]
     sh_map = view2sh(view_map, h1, crop_h, w1, crop_w)
