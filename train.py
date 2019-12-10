@@ -26,11 +26,11 @@ parser.add_argument('--epoch', type=int, default=config.EPOCH)
 parser.add_argument('--cropw', type=int, default=config.CROP_W)
 parser.add_argument('--croph', type=int, default=config.CROP_H)
 parser.add_argument('--batch', type=int, default=config.BATCH_SIZE)
-parser.add_argument('--lr', default=config.LEARNING_RATE)
-parser.add_argument('--betas', default=config.BETAS)
-parser.add_argument('--l2', default=config.L2_WEIGHT_DECAY)
-parser.add_argument('--eps', default=config.EPS)
-parser.add_argument('--load', default=config.LOAD)
+parser.add_argument('--lr', type=float, default=config.LEARNING_RATE)
+parser.add_argument('--betas', type=str, default=config.BETAS)
+parser.add_argument('--l2', type=str, default=config.L2_WEIGHT_DECAY)
+parser.add_argument('--eps', type=float, default=config.EPS)
+parser.add_argument('--load', type=str, default=config.LOAD)
 parser.add_argument('--load_step', type=int, default=config.LOAD_STEP)
 parser.add_argument('--epoch_per_checkpoint', type=int, default=config.EPOCH_PER_CHECKPOINT)
 args = parser.parse_args()
@@ -60,13 +60,18 @@ if __name__ == '__main__':
         model = Renderer(args.pyramidw, args.pyramidh, args.pyramid_num, args.view_direction)
         step = 0
 
+    l2 = args.l2.split(',')
+    l2 = [float(x) for x in l2]
+    betas = args.betas.split(',')
+    betas = [float(x) for x in betas]
+    betas = tuple(betas)
     optimizer = Adam([
-        {'params': model.texture.layer1, 'weight_decay': args.l2[0]},
-        {'params': model.texture.layer2, 'weight_decay': args.l2[1]},
-        {'params': model.texture.layer3, 'weight_decay': args.l2[2]},
-        {'params': model.texture.layer4, 'weight_decay': args.l2[3]},
+        {'params': model.texture.layer1, 'weight_decay': l2[0]},
+        {'params': model.texture.layer2, 'weight_decay': l2[1]},
+        {'params': model.texture.layer3, 'weight_decay': l2[2]},
+        {'params': model.texture.layer4, 'weight_decay': l2[3]},
         {'params': model.unet.parameters()}],
-        lr=args.lr, betas=args.betas, eps=args.eps)
+        lr=args.lr, betas=betas, eps=args.eps)
     model = model.to('cuda')
     model.train()
     torch.set_grad_enabled(True)
