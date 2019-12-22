@@ -33,21 +33,20 @@ parser.add_argument('--betas', type=str, default=config.BETAS)
 parser.add_argument('--l2', type=str, default=config.L2_WEIGHT_DECAY)
 parser.add_argument('--eps', type=float, default=config.EPS)
 parser.add_argument('--load', type=str, default=config.LOAD)
-parser.add_argument('--load_step', type=int, default=config.LOAD_STEP)
 parser.add_argument('--epoch_per_checkpoint', type=int, default=config.EPOCH_PER_CHECKPOINT)
 args = parser.parse_args()
 
 
 def adjust_learning_rate(optimizer, epoch, original_lr):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    if epoch <= 5:
-        lr = original_lr * 0.2 * epoch
-    elif epoch < 50:
+    if epoch <= 3:
+        lr = original_lr * 0.33 * epoch
+    elif epoch < 10:
         lr = original_lr
-    elif epoch < 100:
-        lr = 0.1 * original_lr
+    elif epoch < 50:
+        lr = 0.3 * original_lr
     else:
-        lr = 0.01 * original_lr
+        lr = 0.1 * original_lr
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
@@ -67,13 +66,13 @@ def main():
     dataset = UVDataset(args.data, args.train, args.croph, args.cropw, args.view_direction)
     dataloader = DataLoader(dataset, batch_size=args.batch, shuffle=True, num_workers=4)
 
-    if args.load:
-        print('Loading Saved Model')
-        model = torch.load(os.path.join(args.checkpoint, args.load))
-        step = args.load_step
-    else:
-        model = PipeLine(args.texturew, args.textureh, args.texture_dim, args.use_pyramid, args.view_direction)
-        step = 0
+    model = PipeLine(args.texturew, args.textureh, args.texture_dim, args.use_pyramid, args.view_direction)
+    print('Loading Saved Model')
+    texture = torch.load(os.path.join(args.checkpoint, args.load))
+    model.texture.textures[0] = texture.textures[0]
+    model.texture.textures[1] = texture.textures[1]
+    model.texture.textures[2] = texture.textures[2]
+    step = 0
 
     l2 = args.l2.split(',')
     l2 = [float(x) for x in l2]
@@ -81,15 +80,13 @@ def main():
     betas = [float(x) for x in betas]
     betas = tuple(betas)
     optimizer = Adam([
-        {'params': model.texture.layer1, 'weight_decay': l2[0], 'lr': args.lr},
-        {'params': model.texture.layer2, 'weight_decay': l2[1], 'lr': args.lr},
-        {'params': model.texture.layer3, 'weight_decay': l2[2], 'lr': args.lr},
-        {'params': model.texture.layer4, 'weight_decay': l2[3], 'lr': args.lr},
-        {'params': model.unet.parameters(), 'lr': 0.1 * args.lr}],
-        betas=betas, eps=args.eps)
+        {'params': model.unet.parameters()}],
+        lr=args.lr, betas=betas, eps=args.eps)
     model = model.to('cuda')
     model.train()
-    torch.set_grad_enabled(True)
+    model.texture.textures[0].eval()
+    model.texture.textures[1].eval()
+    model.texture.textures[2].eval()
     criterion = nn.L1Loss()
 
     print('Training started')
@@ -99,19 +96,17 @@ def main():
         for samples in dataloader:
             if args.view_direction:
                 images, uv_maps, sh_maps, masks = samples
-                # random scale
+                 # random scale
                 scale = 2 ** random.randint(-1,1)
                 images = F.interpolate(images, scale_factor=scale, mode='bilinear')
-                
                 uv_maps = uv_maps.permute(0, 3, 1, 2)
                 uv_maps = F.interpolate(uv_maps, scale_factor=scale, mode='bilinear')
                 uv_maps = uv_maps.permute(0, 2, 3, 1)
+                sh_maps = F.interpolate(sh_maps, scale_factor=scale)
 
-                sh_maps = F.interpolate(sh_maps, scale_factor=scale, mode='bilinear')
-                
                 step += images.shape[0]
                 optimizer.zero_grad()
-                RGB_texture, preds = model(uv_maps.cuda(), sh_maps.cuda())
+                preds = model(uv_maps.cuda(), sh_maps.cuda()).cpu()
             else:
                 images, uv_maps, masks = samples
                 # random scale
@@ -120,14 +115,12 @@ def main():
                 uv_maps = uv_maps.permute(0, 3, 1, 2)
                 uv_maps = F.interpolate(uv_maps, scale_factor=scale, mode='bilinear')
                 uv_maps = uv_maps.permute(0, 2, 3, 1)
-                
+
                 step += images.shape[0]
                 optimizer.zero_grad()
-                RGB_texture, preds = model(uv_maps.cuda())
+                preds = model(uv_maps.cuda()).cpu()
 
-            loss1 = criterion(RGB_texture.cpu(), images)
-            loss2 = criterion(preds.cpu(), images)
-            loss = loss1 + loss2
+            loss = criterion(preds, images)
             loss.backward()
             optimizer.step()
             writer.add_scalar('train/loss', loss.item(), step)

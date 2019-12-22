@@ -35,8 +35,8 @@ if __name__ == '__main__':
     if not os.path.exists(args.save):
         os.makedirs(args.save)
 
-    dataset = EvalDataset(args.data, args.test, args.view_direction)
-    dataloader = DataLoader(dataset, batch_size=args.batch, shuffle=False, num_workers=4, collate_fn=EvalDataset.get_collect_fn(args.view_direction))
+    dataset = EvalDataset(args.data, args.test, False)
+    dataloader = DataLoader(dataset, batch_size=args.batch, shuffle=False, num_workers=4, collate_fn=EvalDataset.get_collect_fn(False))
 
     model = torch.load(checkpoint_file)
     model = model.to('cuda')
@@ -49,14 +49,9 @@ if __name__ == '__main__':
                                      (dataset.width, dataset.height), True)
     print('Evaluating started')
     for samples in tqdm.tqdm(dataloader):
-        if args.view_direction:
-            uv_maps, sh_maps, masks, idxs = samples
-            RGB_texture, preds = model(uv_maps.cuda(), sh_maps.cuda())
-        else:
-            uv_maps, masks, idxs = samples
-            RGB_texture, preds = model(uv_maps.cuda())
+        uv_maps, masks, idxs = samples
+        preds = model(uv_maps.cuda()).cpu()
 
-        preds = preds.cpu()
         preds.masked_fill_(masks, 0) # fill invalid with 0
 
         # save result

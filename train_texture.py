@@ -1,7 +1,6 @@
 import argparse
 import numpy as np
 import os
-import random
 import tensorboardX
 import time
 import torch
@@ -12,14 +11,13 @@ from torch.utils.data import DataLoader
 
 import config
 from dataset.uv_dataset import UVDataset
-from model.pipeline import PipeLine
+from model.texture import Texture
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--texturew', type=int, default=config.TEXTURE_W)
 parser.add_argument('--textureh', type=int, default=config.TEXTURE_H)
 parser.add_argument('--texture_dim', type=int, default=config.TEXTURE_DIM)
 parser.add_argument('--use_pyramid', type=bool, default=config.USE_PYRAMID)
-parser.add_argument('--view_direction', type=bool, default=config.VIEW_DIRECTION)
 parser.add_argument('--data', type=str, default=config.DATA_DIR, help='directory to data')
 parser.add_argument('--checkpoint', type=str, default=config.CHECKPOINT_DIR, help='directory to save checkpoint')
 parser.add_argument('--logdir', type=str, default=config.LOG_DIR, help='directory to save checkpoint')
@@ -40,11 +38,11 @@ args = parser.parse_args()
 
 def adjust_learning_rate(optimizer, epoch, original_lr):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    if epoch <= 5:
-        lr = original_lr * 0.2 * epoch
-    elif epoch < 50:
+    if epoch <= 3:
+        lr = original_lr * 0.33 * epoch
+    elif epoch < 5:
         lr = original_lr
-    elif epoch < 100:
+    elif epoch < 10:
         lr = 0.1 * original_lr
     else:
         lr = 0.01 * original_lr
@@ -64,7 +62,7 @@ def main():
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
-    dataset = UVDataset(args.data, args.train, args.croph, args.cropw, args.view_direction)
+    dataset = UVDataset(args.data, args.train, args.croph, args.cropw, False)
     dataloader = DataLoader(dataset, batch_size=args.batch, shuffle=True, num_workers=4)
 
     if args.load:
@@ -72,7 +70,7 @@ def main():
         model = torch.load(os.path.join(args.checkpoint, args.load))
         step = args.load_step
     else:
-        model = PipeLine(args.texturew, args.textureh, args.texture_dim, args.use_pyramid, args.view_direction)
+        model = Texture(args.texturew, args.textureh, 3, use_pyramid=args.use_pyramid)
         step = 0
 
     l2 = args.l2.split(',')
@@ -81,12 +79,11 @@ def main():
     betas = [float(x) for x in betas]
     betas = tuple(betas)
     optimizer = Adam([
-        {'params': model.texture.layer1, 'weight_decay': l2[0], 'lr': args.lr},
-        {'params': model.texture.layer2, 'weight_decay': l2[1], 'lr': args.lr},
-        {'params': model.texture.layer3, 'weight_decay': l2[2], 'lr': args.lr},
-        {'params': model.texture.layer4, 'weight_decay': l2[3], 'lr': args.lr},
-        {'params': model.unet.parameters(), 'lr': 0.1 * args.lr}],
-        betas=betas, eps=args.eps)
+        {'params': model.layer1, 'weight_decay': l2[0]},
+        {'params': model.layer2, 'weight_decay': l2[1]},
+        {'params': model.layer3, 'weight_decay': l2[2]},
+        {'params': model.layer4, 'weight_decay': l2[3]}],
+        lr=args.lr, betas=betas, eps=args.eps)
     model = model.to('cuda')
     model.train()
     torch.set_grad_enabled(True)
@@ -97,46 +94,22 @@ def main():
         print('Epoch {}'.format(i))
         adjust_learning_rate(optimizer, i, args.lr)
         for samples in dataloader:
-            if args.view_direction:
-                images, uv_maps, sh_maps, masks = samples
-                # random scale
-                scale = 2 ** random.randint(-1,1)
-                images = F.interpolate(images, scale_factor=scale, mode='bilinear')
-                
-                uv_maps = uv_maps.permute(0, 3, 1, 2)
-                uv_maps = F.interpolate(uv_maps, scale_factor=scale, mode='bilinear')
-                uv_maps = uv_maps.permute(0, 2, 3, 1)
+            images, uv_maps, masks = samples
+            step += images.shape[0]
+            optimizer.zero_grad()
+            preds = model(uv_maps.cuda()).cpu()
 
-                sh_maps = F.interpolate(sh_maps, scale_factor=scale, mode='bilinear')
-                
-                step += images.shape[0]
-                optimizer.zero_grad()
-                RGB_texture, preds = model(uv_maps.cuda(), sh_maps.cuda())
-            else:
-                images, uv_maps, masks = samples
-                # random scale
-                scale = 2 ** random.randint(-1,1)
-                images = F.interpolate(images, scale_factor=scale, mode='bilinear')
-                uv_maps = uv_maps.permute(0, 3, 1, 2)
-                uv_maps = F.interpolate(uv_maps, scale_factor=scale, mode='bilinear')
-                uv_maps = uv_maps.permute(0, 2, 3, 1)
-                
-                step += images.shape[0]
-                optimizer.zero_grad()
-                RGB_texture, preds = model(uv_maps.cuda())
-
-            loss1 = criterion(RGB_texture.cpu(), images)
-            loss2 = criterion(preds.cpu(), images)
-            loss = loss1 + loss2
+            preds = torch.masked_select(preds, masks)
+            images = torch.masked_select(images, masks)
+            loss = criterion(preds, images)
             loss.backward()
             optimizer.step()
             writer.add_scalar('train/loss', loss.item(), step)
             print('loss at step {}: {}'.format(step, loss.item()))
 
-        # save checkpoint
-        if i % args.epoch_per_checkpoint == 0:
-            print('Saving checkpoint')
-            torch.save(model, args.checkpoint+time_string+'/epoch_{}.pt'.format(i))
+    # save checkpoint
+    print('Saving checkpoint')
+    torch.save(model, args.checkpoint+time_string+'/epoch_{}.pt'.format(i))
 
 if __name__ == '__main__':
     main()

@@ -2,13 +2,13 @@ import numpy as np
 from PIL import Image
 import random
 import torch
+import torch.nn.functional as F
 import torchvision.transforms as transforms
 
 
 def img_transform(image):
     image_transforms = transforms.Compose([
         transforms.ToTensor(),
-        # transforms.Normalize([.485, .456, .406], [.229, .224, .225]),
     ])
     image = image_transforms(image)
     return image
@@ -41,7 +41,7 @@ def augment(img, map, crop_size):
 
     # final transform
     img, map = img_transform(img), map_transform(map)
-
+    
     # mask for valid uv positions
     mask = torch.max(map, dim=2)[0].ge(-1.0+1e-6)
     mask = mask.repeat((3,1,1))
@@ -104,7 +104,7 @@ def augment_view(img, map, view_map, crop_size):
 
     # final transform
     img, map, sh_map = img_transform(img), map_transform(map), map_transform(sh_map)
-
+    
     # mask for valid uv positions
     mask = torch.max(map, dim=2)[0].ge(-1.0+1e-6)
     mask = mask.repeat((3,1,1))

@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 
 import config
 from dataset.uv_dataset import UVDataset
-from model.renderer import Renderer
+from model.pipeline import PipeLine
 
 logger = logging.getLogger('neural_texture_AutoML')
 
@@ -18,8 +18,11 @@ logger = logging.getLogger('neural_texture_AutoML')
 def get_params():
     # Training settings
     parser = argparse.ArgumentParser()
-    parser.add_argument('--pyramidw', type=int, default=config.PYRAMID_W)
-    parser.add_argument('--pyramidh', type=int, default=config.PYRAMID_H)
+    parser.add_argument('--texturew', type=int, default=config.TEXTURE_W)
+    parser.add_argument('--textureh', type=int, default=config.TEXTURE_H)
+    parser.add_argument('--texture_dim', type=int, default=config.TEXTURE_DIM)
+    parser.add_argument('--use_pyramid', type=bool, default=config.USE_PYRAMID)
+    parser.add_argument('--view_direction', type=bool, default=config.VIEW_DIRECTION)
     parser.add_argument('--data', type=str, default=config.DATA_DIR, help='directory to data')
     parser.add_argument('--checkpoint', type=str, default=config.CHECKPOINT_DIR, help='directory to save checkpoint')
     parser.add_argument('--logdir', type=str, default=config.LOG_DIR, help='directory to save checkpoint')
@@ -37,6 +40,18 @@ def get_params():
     args = parser.parse_args()
     return args
 
+def adjust_learning_rate(optimizer, epoch, original_lr):
+    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
+    if epoch <= 5:
+        lr = original_lr * 0.2 * epoch
+    elif epoch < 50:
+        lr = original_lr
+    elif epoch < 100:
+        lr = 0.1 * original_lr
+    else:
+        lr = 0.01 * original_lr
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
 
 def main(args):
 
@@ -59,24 +74,21 @@ def main(args):
         model = torch.load(os.path.join(args.checkpoint, args.load))
         step = args.load_step
     else:
-        model = Renderer(args.pyramidw, args.pyramidh)
+        model = PipeLine(args.texturew, args.textureh, args.texture_dim, args.use_pyramid, args.view_direction)
         step = 0
 
+    l2 = args.l2.split(',')
+    l2 = [float(x) for x in l2]
+    betas = args.betas.split(',')
+    betas = [float(x) for x in betas]
+    betas = tuple(betas)
     optimizer = Adam([
-        {'params': model.texture.pyramid1.layer1, 'weight_decay': args.l2[0]},
-        {'params': model.texture.pyramid2.layer1, 'weight_decay': args.l2[0]},
-        {'params': model.texture.pyramid3.layer1, 'weight_decay': args.l2[0]},
-        {'params': model.texture.pyramid1.layer2, 'weight_decay': args.l2[1]},
-        {'params': model.texture.pyramid2.layer2, 'weight_decay': args.l2[1]},
-        {'params': model.texture.pyramid3.layer2, 'weight_decay': args.l2[1]},
-        {'params': model.texture.pyramid1.layer3, 'weight_decay': args.l2[2]},
-        {'params': model.texture.pyramid2.layer3, 'weight_decay': args.l2[2]},
-        {'params': model.texture.pyramid3.layer3, 'weight_decay': args.l2[2]},
-        {'params': model.texture.pyramid1.layer4, 'weight_decay': args.l2[3]},
-        {'params': model.texture.pyramid2.layer4, 'weight_decay': args.l2[3]},
-        {'params': model.texture.pyramid3.layer4, 'weight_decay': args.l2[3]},
-        {'params': model.unet.parameters()}],
-        lr=args.lr, betas=args.betas, eps=args.eps)
+        {'params': model.texture.layer1, 'weight_decay': l2[0], 'lr': args.lr},
+        {'params': model.texture.layer2, 'weight_decay': l2[1], 'lr': args.lr},
+        {'params': model.texture.layer3, 'weight_decay': l2[2], 'lr': args.lr},
+        {'params': model.texture.layer4, 'weight_decay': l2[3], 'lr': args.lr},
+        {'params': model.unet.parameters(), 'lr': 0.1 * args.lr}],
+        betas=betas, eps=args.eps)
     model = model.to('cuda')
     model.train()
     torch.set_grad_enabled(True)
@@ -85,14 +97,39 @@ def main(args):
     print('Training started')
     for i in range(args.epoch):
         print('Epoch {}'.format(i+1))
+        adjust_learning_rate(optimizer, i, args.lr)
         for samples in dataloader:
-            images, uv_maps, masks = samples
-            step += images.shape[0]
-            optimizer.zero_grad()
-            preds = model(uv_maps.cuda()).cpu()
-            preds = torch.masked_select(preds, masks)
-            images = torch.masked_select(images, masks)
-            loss = criterion(preds, images)
+            if args.view_direction:
+                images, uv_maps, sh_maps, masks = samples
+                # random scale
+                scale = 2 ** random.randint(-1,1)
+                images = F.interpolate(images, scale_factor=scale, mode='bilinear')
+                
+                uv_maps = uv_maps.permute(0, 3, 1, 2)
+                uv_maps = F.interpolate(uv_maps, scale_factor=scale, mode='bilinear')
+                uv_maps = uv_maps.permute(0, 2, 3, 1)
+
+                sh_maps = F.interpolate(sh_maps, scale_factor=scale, mode='bilinear')
+                
+                step += images.shape[0]
+                optimizer.zero_grad()
+                RGB_texture, preds = model(uv_maps.cuda(), sh_maps.cuda())
+            else:
+                images, uv_maps, masks = samples
+                # random scale
+                scale = 2 ** random.randint(-1,1)
+                images = F.interpolate(images, scale_factor=scale, mode='bilinear')
+                uv_maps = uv_maps.permute(0, 3, 1, 2)
+                uv_maps = F.interpolate(uv_maps, scale_factor=scale, mode='bilinear')
+                uv_maps = uv_maps.permute(0, 2, 3, 1)
+                
+                step += images.shape[0]
+                optimizer.zero_grad()
+                RGB_texture, preds = model(uv_maps.cuda())
+
+            loss1 = criterion(RGB_texture.cpu(), images)
+            loss2 = criterion(preds.cpu(), images)
+            loss = loss1 + loss2
             loss.backward()
             optimizer.step()
             nni.report_intermediate_result(loss.item())
