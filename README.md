@@ -1,9 +1,5 @@
 # NeuralTexture
 
-
-
-## Introduction
-
 This repository implements [Deferred Neural Rendering: Image Synthesis using Neural Textures](https://arxiv.org/abs/1904.12356) .
 
 
@@ -18,6 +14,7 @@ This repository implements [Deferred Neural Rendering: Image Synthesis using Neu
   + pytorch
   + tensorboardX
   + torchvision
+  + tqdm
 
 
 
@@ -30,8 +27,11 @@ dataset/ --- custom PyTorch Dataset classes for loading included data
 model/ --- custom PyTorch Module classes
 program/ --- small auxiliary programs
 util.py --- useful procedures
-render.py --- main render script
-train.py --- main training script
+render.py --- render using texture and U-Net
+render_texture.py --- render from RGB texture or neural texture
+train.py --- optimize texture and U-Net jointly
+train_texture.py --- optimize only texture
+train_unet.py --- optimize U-Net using pretrained 3-channel texture
 ```
 
 
@@ -48,15 +48,35 @@ Install requirements:
 pip install -r requirements.txt
 ```
 
-### Train
+### Prepare Data
 
-To train the model, put uv-map `.npy` files and video frames `.ppm` files into one folder, set parameters in `config.py` , and run the command:
+We need 3 folders of data:
+
++ `/data/frame/`  with video frames `.png` files
++ `/data/uv/`  with uv-map `.npy` files, each shaped (H, W, 2)
++ `/data/view_direction/`  with view direction map  `.npy` files,, each shaped (H, W, 3)
+
+Each frame corresponds to one uv map and one view direction map. They are named sequentially, from `0000` to `xxxx` .
+
+### Train Jointly
 
 ```powershell
 python train.py [--args]
 ```
 
-### Train with AutoML
+### Train Texture
+
+```powershell
+python train_texture.py [--args]
+```
+
+### Train U-Net
+
+```powershell
+python train_unet.py [--args]
+```
+
+### Train Jointly with AutoML
 
 To use `nni` , change settings in `config.yaml` and `search_space.json` and run:
 
@@ -66,9 +86,13 @@ nnictl create --config config.yml [--port 8088] [--debug]
 
 For detailed usage, check https://github.com/microsoft/nni.
 
-### Render
+### Render by Texture
 
-To render images using trained model, put uv-map `.npy` files into one folder, set parameters in `config.py` , and run the command:
+```powershell
+python render_texture.py [--args]
+```
+
+### Render by Texture and U-Net Jointly
 
 ```powershell
 python render.py [--args]
