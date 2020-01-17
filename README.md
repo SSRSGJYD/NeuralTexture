@@ -58,6 +58,8 @@ We need 3 folders of data:
 
 Each frame corresponds to one uv map and one view direction map. They are named sequentially, from `0000` to `xxxx` .
 
+We demonstrate 2 ways to prepare data. One way is to render training data, the code is at https://github.com/A-Dying-Pig/OpenGL_NeuralTexture. The other way is to reconstruct from real scene, the code is at https://github.com/gerwang/InfiniTAM .
+
 ### Train Jointly
 
 ```powershell
