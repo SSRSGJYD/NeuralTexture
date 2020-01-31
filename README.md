@@ -1,4 +1,4 @@
-# NeuralTexture
+# Neural Texture
 
 This repository implements [Deferred Neural Rendering: Image Synthesis using Neural Textures](https://arxiv.org/abs/1904.12356) .
 
@@ -55,9 +55,13 @@ We need 3 folders of data:
 + `/data/uv/`  with uv-map `.npy` files, each shaped (H, W, 2)
 + `/data/extrinsics/`  with normalized camera extrinsics in  `.npy` files, each shaped (3)
 
-Each frame corresponds to one uv map and one view direction map. They are named sequentially, from `0000` to `xxxx` .
+Each frame corresponds to one uv map and corresponding camera extrinsic parameters. They are named sequentially, from `0000` to `xxxx` .
 
 We demonstrate 2 ways to prepare data. One way is to render training data, the code is at https://github.com/A-Dying-Pig/OpenGL_NeuralTexture. The other way is to reconstruct from real scene, the code is at https://github.com/gerwang/InfiniTAM .
+
+### Configuration
+
+Rename `config_example.py` as `config.py` and set the parameters for training and rendering.
 
 ### Train Jointly
 
@@ -76,16 +80,6 @@ python train_texture.py [--args]
 ```powershell
 python train_unet.py [--args]
 ```
-
-### Train Jointly with AutoML
-
-To use `nni` , change settings in `config.yaml` and `search_space.json` and run:
-
-```powershell
-nnictl create --config config.yml [--port 8088] [--debug] 
-```
-
-For detailed usage, check https://github.com/microsoft/nni.
 
 ### Render by Texture
 
