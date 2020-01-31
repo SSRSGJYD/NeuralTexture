@@ -98,7 +98,7 @@ def main():
         adjust_learning_rate(optimizer, i, args.lr)
         for samples in dataloader:
             if args.view_direction:
-                images, uv_maps, sh_maps, masks = samples
+                images, uv_maps, extrinsics, masks = samples
                 # random scale
                 scale = 2 ** random.randint(-1,1)
                 images = F.interpolate(images, scale_factor=scale, mode='bilinear')
@@ -107,11 +107,9 @@ def main():
                 uv_maps = F.interpolate(uv_maps, scale_factor=scale, mode='bilinear')
                 uv_maps = uv_maps.permute(0, 2, 3, 1)
 
-                sh_maps = F.interpolate(sh_maps, scale_factor=scale, mode='bilinear')
-                
                 step += images.shape[0]
                 optimizer.zero_grad()
-                RGB_texture, preds = model(uv_maps.cuda(), sh_maps.cuda())
+                RGB_texture, preds = model(uv_maps.cuda(), extrinsics.cuda())
             else:
                 images, uv_maps, masks = samples
                 # random scale

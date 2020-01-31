@@ -50,8 +50,8 @@ if __name__ == '__main__':
     print('Evaluating started')
     for samples in tqdm.tqdm(dataloader):
         if args.view_direction:
-            uv_maps, sh_maps, masks, idxs = samples
-            RGB_texture, preds = model(uv_maps.cuda(), sh_maps.cuda())
+            uv_maps, extrinsics, masks, idxs = samples
+            RGB_texture, preds = model(uv_maps.cuda(), extrinsics.cuda())
         else:
             uv_maps, masks, idxs = samples
             RGB_texture, preds = model(uv_maps.cuda())

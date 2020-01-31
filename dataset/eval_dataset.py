@@ -32,21 +32,19 @@ class EvalDataset(Dataset):
         mask = mask.repeat((3, 1, 1))
 
         if self.view_direction:
-            view_map = np.load(os.path.join(self.dir, 'view_normal/'+self.idx_list[idx]+'.npy'))
-            sh_map = view2sh(view_map, 0, view_map.shape[0], 0, view_map.shape[1])
-            sh_map = map_transform(sh_map)
-            return uv_map, sh_map, mask, self.idx_list[idx]
+            extrinsics = np.load(os.path.join(self.dir, 'extrinsics/'+self.idx_list[idx]+'.npy'))
+            return uv_map, extrinsics, mask, self.idx_list[idx]
         else:
             return uv_map, mask, self.idx_list[idx]
 
     @staticmethod
     def _collect_fn(data, view_direction=False):
         if view_direction:
-            uv_maps, sh_maps, masks, idxs = zip(*data)
+            uv_maps, extrinsics, masks, idxs = zip(*data)
             uv_maps = torch.stack(tuple(uv_maps), dim=0)
-            sh_maps = torch.stack(tuple(sh_maps), dim=0)
+            extrinsics = torch.stack(tuple(extrinsics), dim=0)
             masks = torch.stack(tuple(masks), dim=0)
-            return uv_maps, sh_maps, masks, idxs
+            return uv_maps, extrinsics, masks, idxs
         else:
             uv_maps, masks, idxs = zip(*data)
             uv_maps = torch.stack(tuple(uv_maps), dim=0)

@@ -3,7 +3,7 @@ import os
 from PIL import Image
 from torch.utils.data import Dataset
 
-from util import augment, augment_view
+from util import augment
 
 
 class UVDataset(Dataset):
@@ -26,10 +26,11 @@ class UVDataset(Dataset):
             print('nan in dataset')
         if np.any(np.isinf(uv_map)):
             print('inf in dataset')
+        img, uv_map, mask = augment(img, uv_map, self.crop_size)
         if self.view_direction:
-            view_map = np.load(os.path.join(self.dir, 'view_normal/'+self.idx_list[idx]+'.npy'))
-            img, uv_map, sh_map, mask = augment_view(img, uv_map, view_map, self.crop_size)
-            return img, uv_map, sh_map, mask
+            # view_map = np.load(os.path.join(self.dir, 'view_normal/'+self.idx_list[idx]+'.npy'))
+            extrinsics = np.load(os.path.join(self.dir, 'extrinsics/'+self.idx_list[idx]+'.npy'))
+            return img, uv_map, extrinsics, mask
         else:
-            img, uv_map, mask = augment(img, uv_map, self.crop_size)
+            
             return img, uv_map, mask
