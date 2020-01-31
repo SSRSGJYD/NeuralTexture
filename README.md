@@ -25,7 +25,6 @@ The root directory contains several subdirectories and files:
 ```
 dataset/ --- custom PyTorch Dataset classes for loading included data
 model/ --- custom PyTorch Module classes
-program/ --- small auxiliary programs
 util.py --- useful procedures
 render.py --- render using texture and U-Net
 render_texture.py --- render from RGB texture or neural texture
@@ -54,7 +53,7 @@ We need 3 folders of data:
 
 + `/data/frame/`  with video frames `.png` files
 + `/data/uv/`  with uv-map `.npy` files, each shaped (H, W, 2)
-+ `/data/view_direction/`  with view direction map  `.npy` files,, each shaped (H, W, 3)
++ `/data/extrinsics/`  with normalized camera extrinsics in  `.npy` files, each shaped (3)
 
 Each frame corresponds to one uv map and one view direction map. They are named sequentially, from `0000` to `xxxx` .
 
