@@ -49,7 +49,8 @@ class PipeLine(nn.Module):
             x = self.texture(uv_map)
             assert x.shape[1] >= 12
             basis = self._spherical_harmonics_basis(extrinsics).cuda()
-            x[:, 3:12, :, :] = x[:, 3:12, :, :] * basis[:, :]
+            basis = basis.view(basis.shape[0], basis.shape[1], 1, 1)
+            x[:, 3:12, :, :] = x[:, 3:12, :, :] * basis
         else:
             uv_map = args[0]
             x = self.texture(uv_map)
