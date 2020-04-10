@@ -42,7 +42,7 @@ class EvalDataset(Dataset):
         if view_direction:
             uv_maps, extrinsics, masks, idxs = zip(*data)
             uv_maps = torch.stack(tuple(uv_maps), dim=0)
-            extrinsics = torch.stack(tuple(extrinsics), dim=0)
+            extrinsics = torch.FloatTensor(extrinsics).unsqueeze(0)
             masks = torch.stack(tuple(masks), dim=0)
             return uv_maps, extrinsics, masks, idxs
         else:
